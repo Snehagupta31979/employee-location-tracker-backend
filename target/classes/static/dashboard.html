@@ -1,0 +1,341 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Employee Location Tracker - Dashboard</title>
+<link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.4/dist/chart.umd.min.js"></script>
+<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css">
+<link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+
+<!-- ============ TOP NAV ============ -->
+<nav class="navbar navbar-dark app-navbar px-3">
+    <span class="navbar-brand fw-bold">📍 Employee Location Tracker</span>
+    <div class="d-flex align-items-center gap-3">
+        <span class="text-light small" id="welcomeText">Welcome</span>
+        <button class="btn btn-sm btn-outline-light" id="logoutBtn">Logout</button>
+    </div>
+</nav>
+
+<div class="container-fluid p-3 p-md-4">
+
+    <!-- ============ EMPLOYEE DASHBOARD ============ -->
+    <section id="employeeSection">
+        <div class="row g-3 mb-3">
+            <div class="col-6 col-md-3">
+                <div class="card stat-card">
+                    <div class="card-body">
+                        <div class="stat-label">Status</div>
+                        <div class="stat-value"><span id="statusBadge" class="badge bg-secondary">Loading...</span></div>
+                        <button class="btn btn-sm btn-success mt-2 w-100" id="startTrackingBtn">▶ Start Tracking</button>
+                        <button class="btn btn-sm btn-danger mt-2 w-100 d-none" id="stopTrackingBtn">⏹ Stop Tracking</button>
+                    </div>
+                </div>
+            </div>
+            <div class="col-6 col-md-3">
+                <div class="card stat-card">
+                    <div class="card-body">
+                        <div class="stat-label">Today's Distance</div>
+                        <div class="stat-value" id="distanceValue">0.00 km</div>
+                    </div>
+                </div>
+            </div>
+            <div class="col-6 col-md-3">
+                <div class="card stat-card">
+                    <div class="card-body">
+                        <div class="stat-label">Current Location</div>
+                        <div class="stat-value small" id="coordsValue">--</div>
+                    </div>
+                </div>
+            </div>
+            <div class="col-6 col-md-3">
+                <div class="card stat-card">
+                    <div class="card-body">
+                        <div class="stat-label">Last Updated</div>
+                        <div class="stat-value small" id="lastUpdatedValue">--</div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="row g-3">
+            <div class="col-lg-8">
+                <div class="card">
+                    <div class="card-header d-flex justify-content-between align-items-center">
+                        <span>Live Map</span>
+                        <div class="d-flex align-items-center gap-2">
+                            <button class="btn btn-sm btn-outline-primary" id="nearMeBtn">📍 Near Me</button>
+                            <select class="form-select form-select-sm w-auto" id="geofenceRadiusSelect">
+                                <option value="100">Geofence: 100m</option>
+                                <option value="200" selected>Geofence: 200m</option>
+                                <option value="500">Geofence: 500m</option>
+                            </select>
+                            <span class="badge" id="geofenceStatusBadge">Geofence: --</span>
+                            <button class="btn btn-sm btn-primary" id="refreshLocationBtn">🔄 Refresh Location</button>
+                        </div>
+                    </div>
+                    <div class="card-body p-0">
+                        <div id="employeeMap" class="map-large"></div>
+                        <div class="mt-3" id="nearbyPlacesPanel" style="display:none;">
+                        <div class="d-flex align-items-center gap-2 mb-2">
+                            <h6 class="report-section-title mb-0">📍 Nearby Places</h6>
+                            <button class="btn btn-sm btn-outline-primary" id="viewNearbyBtn">👁 View</button>
+                        </div>
+                        <div id="nearbyPlacesList" class="list-group" style="display:none;"></div>
+                    </div>
+                    </div>
+                </div>
+                
+            </div>
+            <div class="col-lg-4">
+                <div class="card mb-3">
+                    <div class="card-header">Today's Activity Timeline</div>
+                    <div class="card-body timeline-body" id="activityTimeline">
+                        <p class="text-muted small">No activity yet today.</p>
+                    </div>
+                </div>
+                <div class="card">
+                    <div class="card-header">Today's Stops</div>
+                    <div class="card-body timeline-body" id="stopsList">
+                        <p class="text-muted small">No stops detected yet today.</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- ============ ADMIN DASHBOARD ============ -->
+    <section id="adminSection" class="d-none mt-4">
+    <div id="geofenceToastContainer" style="position:fixed; top:70px; right:20px; z-index:2000;"></div>
+        <hr class="my-4">
+        <h4 class="fw-bold mb-3">Admin Panel</h4>
+
+        <div class="row g-3 mb-3">
+            <div class="col-6 col-md-4">
+                <div class="card stat-card">
+                    <div class="card-body">
+                        <div class="stat-label">Total Employees</div>
+                        <div class="stat-value" id="totalCount">0</div>
+                    </div>
+                </div>
+            </div>
+            <div class="col-6 col-md-4">
+                <div class="card stat-card">
+                    <div class="card-body">
+                        <div class="stat-label">Online</div>
+                        <div class="stat-value text-success" id="onlineCount">0</div>
+                    </div>
+                </div>
+            </div>
+            <div class="col-6 col-md-4">
+                <div class="card stat-card">
+                    <div class="card-body">
+                        <div class="stat-label">Offline</div>
+                        <div class="stat-value text-danger" id="offlineCount">0</div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="row g-3">
+            <div class="col-lg-5">
+                <div class="card">
+                    <div class="card-header d-flex justify-content-between align-items-center">
+                        <span>Employees</span>
+                        <button class="btn btn-sm btn-outline-secondary" id="refreshAdminBtn">🔄 Refresh</button>
+                    </div>
+                    <div class="card-body p-0">
+                        <table class="table table-hover mb-0" id="employeeTable">
+                            <thead>
+                                <tr>
+                                    <th>Name</th>
+                                    <th>Status</th>
+                                    <th>Distance</th>
+                                    <th>Last Update</th>
+                                    <th></th>
+                                </tr>
+                            </thead>
+                            <tbody id="employeeTableBody"></tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+            <div class="col-lg-7">
+                <div class="card">
+                    <div class="card-header">Live Locations Map</div>
+                    <div class="card-body p-0">
+                        <div id="adminMap" class="map-large"></div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="card mt-3 reports-card">
+            <div class="card-header d-flex align-items-center gap-2">
+                <span class="reports-header-icon">📊</span>
+                <span>Employee Reports</span>
+            </div>
+            <div class="card-body">
+                <form class="row g-3 align-items-end reports-toolbar" id="reportForm">
+                    <div class="col-md-4">
+                        <label class="form-label small text-uppercase text-muted fw-semibold">Employee</label>
+                        <select class="form-select" id="reportEmployeeSelect"></select>
+                    </div>
+                    <div class="col-md-3">
+                        <label class="form-label small text-uppercase text-muted fw-semibold">Date</label>
+                        <input type="date" class="form-control" id="reportDate">
+                    </div>
+                    <div class="col-md-2">
+                        <button type="submit" class="btn btn-primary w-100">🔍 View</button>
+                    </div>
+                    <div class="col-md-2">
+                        <button type="button" class="btn btn-success w-100" id="exportReportBtn">⬇ Export Excel</button>
+                    </div>
+                    <div class="col-md-1">
+                        <button type="button" class="btn btn-outline-secondary w-100" id="printReportBtn">🖨</button>
+                    </div>
+                </form>
+
+                <div id="reportResult" class="mt-4 d-none">
+
+                    <div class="report-summary-grid mb-4">
+                        <div class="summary-chip">
+                            <div class="summary-chip-label">Employee</div>
+                            <div class="summary-chip-value" id="reportEmployeeName"></div>
+                        </div>
+                        <div class="summary-chip">
+                            <div class="summary-chip-label">Date</div>
+                            <div class="summary-chip-value" id="reportDateLabel"></div>
+                        </div>
+                        <div class="summary-chip highlight">
+                            <div class="summary-chip-label">Total Distance</div>
+                            <div class="summary-chip-value"><span id="reportDistance"></span> km</div>
+                        </div>
+                        <div class="summary-chip">
+                            <div class="summary-chip-label">Tracking Started</div>
+                            <div class="summary-chip-value"><span id="reportStartCount"></span></div>
+                        </div>
+                        <div class="summary-chip">
+                            <div class="summary-chip-label">Tracking Stopped</div>
+                            <div class="summary-chip-value"><span id="reportStopCount"></span></div>
+                        </div>
+                        <div class="summary-chip">
+                            <div class="summary-chip-label">First Start Time</div>
+                            <div class="summary-chip-value" id="reportFirstStart"></div>
+                        </div>
+                        <div class="summary-chip">
+                            <div class="summary-chip-label">Login Time</div>
+                            <div class="summary-chip-value" id="reportLoginTime"></div>
+                        </div>
+                        <div class="summary-chip">
+                            <div class="summary-chip-label">Logout Time</div>
+                            <div class="summary-chip-value" id="reportLogoutTime"></div>
+                        </div>
+                    </div>
+
+                    <div class="report-section">
+                        <h6 class="report-section-title">🕒 Tracking Sessions (Start / Stop)</h6>
+                        <div class="table-responsive report-table-wrap">
+                            <table class="table table-sm table-hover align-middle mb-0" id="reportSessionsTable">
+                                <thead><tr><th>#</th><th>Start</th><th>End</th><th>Duration (min)</th></tr></thead>
+                                <tbody id="reportSessionsBody"></tbody>
+                            </table>
+                            <div class="report-section">
+                        <h6 class="report-section-title">🏢 Geofence Visits (Office / Client)</h6>
+                        <div class="table-responsive report-table-wrap">
+                            <table class="table table-sm table-hover align-middle mb-0" id="reportGeofenceTable">
+                                <thead><tr><th>#</th><th>Location</th><th>Type</th><th>Entry</th><th>Exit</th><th>Duration (min)</th></tr></thead>
+                                <tbody id="reportGeofenceBody"></tbody>
+                            </table>
+                        </div>
+                    </div>
+                        </div>
+                    </div>
+
+                    <div class="report-section">
+                        <h6 class="report-section-title">📍 Location Points</h6>
+                        <div class="table-responsive report-table-wrap" style="max-height:300px;">
+                            <table class="table table-sm table-hover align-middle mb-0" id="reportLocationsTable">
+                                <thead><tr><th>#</th><th>Address (Area / Pincode)</th><th>Recorded At</th><th>Stoppage</th></tr></thead>
+                                
+                                <tbody id="reportLocationsBody"></tbody>
+                            </table>
+                        </div>
+                    </div>
+                    <div class="report-section">
+                        <div class="row g-3">
+                            <div class="col-lg-6">
+                                <div class="card">
+                                    <div class="card-header d-flex justify-content-between align-items-center">
+                                        <span class="small fw-bold">📈 Daily Distance (Mon - Sat)</span>
+                                        <div class="d-flex align-items-center gap-1">
+                                            <button class="btn btn-sm btn-outline-secondary chart-type-btn active" data-chart-group="daily" data-chart-type="line" title="Line Chart">📈</button>
+                                            <button class="btn btn-sm btn-outline-secondary chart-type-btn" data-chart-group="daily" data-chart-type="bar" title="Bar Chart">📊</button>
+                                            <button class="btn btn-sm btn-outline-secondary chart-type-btn" data-chart-group="daily" data-chart-type="pie" title="Pie Chart">🥧</button>
+                                            <button class="btn btn-sm btn-outline-secondary" id="dailyChartDownloadBtn" title="Download">⬇</button>
+                                        </div>
+                                    </div>
+                                    <div class="card-body" style="height:220px;"><canvas id="reportDailyDistanceChart"></canvas></div>
+                                </div>
+                            </div>
+                            <div class="col-lg-6">
+                                <div class="card">
+                                    <div class="card-header d-flex justify-content-between align-items-center">
+                                        <span class="small fw-bold">🥧 Time Distribution</span>
+                                        <div class="d-flex align-items-center gap-1">
+                                            <button class="btn btn-sm btn-outline-secondary chart-type-btn" data-chart-group="time" data-chart-type="line" title="Line Chart">📈</button>
+                                            <button class="btn btn-sm btn-outline-secondary chart-type-btn" data-chart-group="time" data-chart-type="bar" title="Bar Chart">📊</button>
+                                            <button class="btn btn-sm btn-outline-secondary chart-type-btn active" data-chart-group="time" data-chart-type="pie" title="Pie Chart">🥧</button>
+                                            <button class="btn btn-sm btn-outline-secondary" id="timeChartDownloadBtn" title="Download">⬇</button>
+                                        </div>
+                                    </div>
+                                    <div class="card-body d-flex align-items-center justify-content-center" style="height:220px;"><canvas id="reportTimeDistributionChart"></canvas></div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="row g-3 mt-1">
+                            <div class="col-lg-6">
+                                <div class="card">
+                                    <div class="card-header d-flex justify-content-between align-items-center">
+                                        <span class="small fw-bold">🕒 Tracking Session Durations</span>
+                                        <div class="d-flex align-items-center gap-1">
+                                            <button class="btn btn-sm btn-outline-secondary chart-type-btn" data-chart-group="session" data-chart-type="line" title="Line Chart">📈</button>
+                                            <button class="btn btn-sm btn-outline-secondary chart-type-btn active" data-chart-group="session" data-chart-type="bar" title="Bar Chart">📊</button>
+                                            <button class="btn btn-sm btn-outline-secondary chart-type-btn" data-chart-group="session" data-chart-type="pie" title="Pie Chart">🥧</button>
+                                            <button class="btn btn-sm btn-outline-secondary" id="sessionChartDownloadBtn" title="Download">⬇</button>
+                                        </div>
+                                    </div>
+                                    <div class="card-body" style="height:220px;"><canvas id="reportSessionDurationChart"></canvas></div>
+                                </div>
+                            </div>
+                            <div class="col-lg-6">
+                                <div class="card">
+                                    <div class="card-header d-flex justify-content-between align-items-center">
+                                        <span class="small fw-bold">📍 Location Stoppage Time</span>
+                                        <div class="d-flex align-items-center gap-1">
+                                            <button class="btn btn-sm btn-outline-secondary chart-type-btn" data-chart-group="stoppage" data-chart-type="line" title="Line Chart">📈</button>
+                                            <button class="btn btn-sm btn-outline-secondary chart-type-btn active" data-chart-group="stoppage" data-chart-type="bar" title="Bar Chart">📊</button>
+                                            <button class="btn btn-sm btn-outline-secondary chart-type-btn" data-chart-group="stoppage" data-chart-type="pie" title="Pie Chart">🥧</button>
+                                            <button class="btn btn-sm btn-outline-secondary" id="stoppageChartDownloadBtn" title="Download">⬇</button>
+                                        </div>
+                                    </div>
+                                    <div class="card-body" style="height:220px;"><canvas id="reportStoppageChart"></canvas></div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                </div>
+            </div>
+        </div>
+
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+<script src="js/api.js"></script>
+<script src="js/map.js"></script>
+<script src="js/dashboard.js"></script>
+</body>
+</html>
