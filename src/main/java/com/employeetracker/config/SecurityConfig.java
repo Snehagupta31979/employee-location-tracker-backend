@@ -1,7 +1,6 @@
 package com.employeetracker.config;
 import com.employeetracker.service.AdminEventService;
 
-
 import com.employeetracker.entity.EmployeeActivity;
 import com.employeetracker.repository.UserRepository;
 import com.employeetracker.service.ActivityService;
@@ -15,15 +14,12 @@ import org.springframework.security.config.annotation.web.configuration.EnableWe
 import org.springframework.security.config.http.SessionCreationPolicy;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.security.web.SecurityFilterChain;
-import org.springframework.security.web.csrf.CookieCsrfTokenRepository;
-import org.springframework.security.web.csrf.CsrfTokenRequestAttributeHandler;
 import org.springframework.security.web.authentication.HttpStatusEntryPoint;
 import org.springframework.http.HttpStatus;
 import org.springframework.web.cors.CorsConfiguration;
 import org.springframework.web.cors.CorsConfigurationSource;
 import org.springframework.web.cors.UrlBasedCorsConfigurationSource;
 import java.util.List;
-import java.util.Arrays;
 
 @Configuration
 @EnableWebSecurity
@@ -38,12 +34,12 @@ public class SecurityConfig {
     public SecurityConfig(CustomUserDetailsService userDetailsService, PasswordEncoder passwordEncoder,
             ActivityService activityService, UserRepository userRepository,
             AdminEventService adminEventService) {
-this.userDetailsService = userDetailsService;
-this.passwordEncoder = passwordEncoder;
-this.activityService = activityService;
-this.userRepository = userRepository;
-this.adminEventService = adminEventService;
-}
+        this.userDetailsService = userDetailsService;
+        this.passwordEncoder = passwordEncoder;
+        this.activityService = activityService;
+        this.userRepository = userRepository;
+        this.adminEventService = adminEventService;
+    }
 
     @Bean
     public DaoAuthenticationProvider authenticationProvider() {
@@ -54,36 +50,35 @@ this.adminEventService = adminEventService;
     }
 
     @Bean
+    public org.springframework.security.web.session.HttpSessionEventPublisher httpSessionEventPublisher() {
+        return new org.springframework.security.web.session.HttpSessionEventPublisher();
+    }
+
+    @Bean
     public AuthenticationManager authenticationManager(AuthenticationConfiguration config) throws Exception {
         return config.getAuthenticationManager();
     }
 
     @Bean
     public SecurityFilterChain filterChain(HttpSecurity http) throws Exception {
-        CsrfTokenRequestAttributeHandler requestHandler = new CsrfTokenRequestAttributeHandler();
-        requestHandler.setCsrfRequestAttributeName(null);
-
         http
-        .cors(cors -> cors.configurationSource(corsConfigurationSource()))
-        .csrf(csrf -> csrf
-                    .csrfTokenRepository(CookieCsrfTokenRepository.withHttpOnlyFalse())
-                    .csrfTokenRequestHandler(requestHandler)
-                    // Login itself must be reachable without a pre-existing CSRF cookie/session
-                    .ignoringRequestMatchers("/api/auth/login", "/api/auth/register")
-            )
+            .cors(cors -> cors.configurationSource(corsConfigurationSource()))
+            .csrf(csrf -> csrf.disable())
             .sessionManagement(session -> session
                     .sessionCreationPolicy(SessionCreationPolicy.IF_REQUIRED)
-                    .maximumSessions(1)
+                    .maximumSessions(5)
                     .maxSessionsPreventsLogin(false)
             )
             .authorizeHttpRequests(auth -> auth
                     .requestMatchers(
                             "/", "/index.html", "/dashboard.html",
                             "/css/**", "/js/**", "/favicon.ico",
-                            "/api/auth/login", "/api/auth/logout", "/api/auth/register"
+                            "/api/auth/login", "/api/auth/logout", "/api/auth/register",
+                            "/api/auth/forgot-password", "/api/auth/verify-otp", "/api/auth/reset-password"
                     ).permitAll()
                     .requestMatchers("/api/admin/**").hasRole("ADMIN")
-                    .requestMatchers("/api/location/**", "/api/auth/me").authenticated()
+                    .requestMatchers("/api/location/**", "/api/auth/me", "/api/employee/**")
+                    .authenticated()
                     .anyRequest().permitAll()
             )
             .exceptionHandling(ex -> ex
@@ -119,12 +114,13 @@ this.adminEventService = adminEventService;
 
         return http.build();
     }
+
     @Bean
     public CorsConfigurationSource corsConfigurationSource() {
 
         CorsConfiguration configuration = new CorsConfiguration();
 
-        configuration.setAllowedOriginPatterns(List.of("http://localhost:*"));
+        configuration.setAllowedOriginPatterns(List.of("*"));
 
         configuration.setAllowedMethods(List.of(
                 "GET",
@@ -145,5 +141,5 @@ this.adminEventService = adminEventService;
 
         return source;
     }
-    
+
 }
