@@ -39,6 +39,20 @@ public class User {
     private LocalDateTime lastLoginAt;
     @Column(name = "logged_in", nullable = false)
     private boolean loggedIn = false;
+    @Column(name = "department", length = 100)
+    private String department;
+
+    @Column(name = "designation", length = 100)
+    private String designation;
+
+    @Column(name = "mobile", length = 20)
+    private String mobile;
+
+    @Column(name = "address", length = 255)
+    private String address;
+
+    @Column(name = "joining_date")
+    private java.time.LocalDate joiningDate;
 
     public User() {
     }
@@ -138,6 +152,16 @@ public class User {
     public boolean isLoggedIn() {
         return loggedIn;
     }
+    public String getDepartment() { return department; }
+    public void setDepartment(String department) { this.department = department; }
+    public String getDesignation() { return designation; }
+    public void setDesignation(String designation) { this.designation = designation; }
+    public String getMobile() { return mobile; }
+    public void setMobile(String mobile) { this.mobile = mobile; }
+    public String getAddress() { return address; }
+    public void setAddress(String address) { this.address = address; }
+    public java.time.LocalDate getJoiningDate() { return joiningDate; }
+    public void setJoiningDate(java.time.LocalDate joiningDate) { this.joiningDate = joiningDate; }
 
     public void setLoggedIn(boolean loggedIn) {
         this.loggedIn = loggedIn;
