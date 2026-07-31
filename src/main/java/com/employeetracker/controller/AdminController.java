@@ -124,7 +124,12 @@ public class AdminController {
     @GetMapping("/report")
     public ResponseEntity<ReportResponse> getReport(
             @RequestParam Long employeeId,
-            @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate date) {
+            @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate date,
+            @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate fromDate,
+            @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate toDate) {
+        if (fromDate != null && toDate != null) {
+            return ResponseEntity.ok(reportService.generateReport(employeeId, fromDate, toDate));
+        }
         return ResponseEntity.ok(reportService.generateReport(employeeId, date));
     }
 
