@@ -26,6 +26,9 @@ import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.time.Duration;
 import java.util.ArrayList;
+import com.employeetracker.exception.ResourceNotFoundException;
+import com.employeetracker.exception.BadRequestException;
+import java.util.Map;
 
 import java.time.LocalDate;
 import java.util.List;
@@ -115,6 +118,18 @@ public class AdminController {
 
         allStops.sort((a, b) -> a.getStartTime().compareTo(b.getStartTime()));
         return ResponseEntity.ok(allStops);
+    }
+    @DeleteMapping("/employees/{id}")
+    public ResponseEntity<Map<String, String>> deleteEmployee(@PathVariable Long id) {
+        User user = userRepository.findById(id)
+                .orElseThrow(() -> new ResourceNotFoundException("Employee not found"));
+
+        if (user.getRole() != User.Role.EMPLOYEE) {
+            throw new BadRequestException("Only employee accounts can be deleted");
+        }
+
+        userRepository.delete(user);
+        return ResponseEntity.ok(Map.of("message", "Employee deleted successfully"));
     }
     @GetMapping("/events")
     public SseEmitter streamEvents() {
