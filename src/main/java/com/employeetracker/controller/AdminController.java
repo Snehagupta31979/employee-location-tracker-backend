@@ -14,6 +14,18 @@ import org.springframework.http.HttpHeaders;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
+import com.employeetracker.dto.AdminStopEntry;
+import com.employeetracker.dto.StopResponse;
+import com.employeetracker.dto.LocationResponse;
+import com.employeetracker.entity.User;
+import com.employeetracker.repository.UserRepository;
+import com.employeetracker.service.StopService;
+import com.employeetracker.service.ActivityService;
+import com.employeetracker.service.LocationService;
+import java.time.LocalDate;
+import java.time.LocalDateTime;
+import java.time.Duration;
+import java.util.ArrayList;
 
 import java.time.LocalDate;
 import java.util.List;
@@ -25,11 +37,21 @@ public class AdminController {
     private final AdminService adminService;
     private final ReportService reportService;
     private final AdminEventService adminEventService;
+    private final StopService stopService;
+    private final UserRepository userRepository;
+    private final ActivityService activityService;
+    private final LocationService locationService;
 
-    public AdminController(AdminService adminService, ReportService reportService, AdminEventService adminEventService) {
+    public AdminController(AdminService adminService, ReportService reportService, AdminEventService adminEventService,
+                            StopService stopService, UserRepository userRepository,
+                            ActivityService activityService, LocationService locationService) {
         this.adminService = adminService;
         this.reportService = reportService;
         this.adminEventService = adminEventService;
+        this.stopService = stopService;
+        this.userRepository = userRepository;
+        this.activityService = activityService;
+        this.locationService = locationService;
     }
 
     @GetMapping("/employees")
@@ -50,6 +72,49 @@ public class AdminController {
     @GetMapping("/summary")
     public ResponseEntity<AdminSummaryResponse> getSummary() {
         return ResponseEntity.ok(adminService.getSummary());
+    }
+    @GetMapping("/stops/today")
+    public ResponseEntity<List<AdminStopEntry>> getAllStopsToday() {
+        LocalDate today = LocalDate.now();
+        List<User> employees = userRepository.findByRoleOrderByIdAsc(User.Role.EMPLOYEE);
+        List<AdminStopEntry> allStops = new ArrayList<>();
+
+        for (User employee : employees) {
+            List<StopResponse> sessions = activityService.getTrackingSessions(employee.getId(), today);
+            List<LocationResponse> locations = locationService.getHistory(employee.getId(), today);
+
+            for (StopResponse session : sessions) {
+                if (session.getStartTime() == null) continue;
+
+                LocationResponse nearest = null;
+                long bestDiffSeconds = Long.MAX_VALUE;
+                for (LocationResponse loc : locations) {
+                    if (loc.getRecordedAt() == null) continue;
+                    long diff = Math.abs(Duration.between(session.getStartTime(), loc.getRecordedAt()).toSeconds());
+                    if (diff < bestDiffSeconds) {
+                        bestDiffSeconds = diff;
+                        nearest = loc;
+                    }
+                }
+
+                LocalDateTime effectiveEnd = session.getEndTime() != null ? session.getEndTime() : LocalDateTime.now();
+                long durationMinutes = Duration.between(session.getStartTime(), effectiveEnd).toMinutes();
+
+                allStops.add(new AdminStopEntry(
+                        employee.getId(),
+                        employee.getFullName(),
+                        nearest != null ? nearest.getLatitude() : null,
+                        nearest != null ? nearest.getLongitude() : null,
+                        session.getStartTime(),
+                        session.getEndTime(),
+                        durationMinutes,
+                        session.isOngoing()
+                ));
+            }
+        }
+
+        allStops.sort((a, b) -> a.getStartTime().compareTo(b.getStartTime()));
+        return ResponseEntity.ok(allStops);
     }
     @GetMapping("/events")
     public SseEmitter streamEvents() {
